@@ -1,0 +1,22 @@
+{
+  "device": {
+    "port": "/dev/ttyAMA0",
+    "baudrate": 420000,
+    "invert_tx": false,
+    "invert_rx": false
+  },
+  "playback": {
+    "default_rate_hz": 50,
+    "arm_delay_ms": 3000
+  },
+  "safety": {
+    "arm_channel": 5,
+    "arm_threshold": 1500,
+    "throttle_min": 172,
+    "failsafe_timeout_ms": 500,
+    "disarm_frames": 10
+  },
+  "logging": {
+    "level": "info"
+  }
+}

@@ -1,0 +1,38 @@
+#pragma once
+
+#include <string>
+
+#include "expresslrs_sender/types.hpp"
+#include "playback/playback_controller.hpp"
+#include "safety/safety_monitor.hpp"
+
+namespace elrs {
+namespace config {
+
+// Application configuration
+struct AppConfig {
+    // Device settings
+    std::string device_port = "/dev/ttyAMA0";
+    int baudrate = CRSF_BAUDRATE;
+    bool invert_tx = false;  // UART TX信号反転（一部のモジュール接続で必要）
+    bool invert_rx = false;  // UART RX信号反転
+
+    // Playback defaults
+    playback::PlaybackOptions playback;
+
+    // Safety settings
+    safety::SafetyConfig safety;
+
+    // Logging
+    std::string log_level = "info";
+    std::string log_file;
+};
+
+// Load configuration from JSON file
+Result<AppConfig> loadConfig(const std::string& filepath);
+
+// Get default configuration
+AppConfig getDefaultConfig();
+
+}  // namespace config
+}  // namespace elrs
