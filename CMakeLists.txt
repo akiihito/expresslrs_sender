@@ -34,6 +34,7 @@ set(LIB_SOURCES
     src/playback/playback_controller.cpp
     src/safety/safety_monitor.cpp
     src/config/config.cpp
+    src/gpio/gpio_uart_map.cpp
 )
 
 # Create library
@@ -70,6 +71,7 @@ if(ENABLE_TESTS)
         tests/test_safety.cpp
         tests/test_config.cpp
         tests/test_cli.cpp
+        tests/test_gpio_uart_map.cpp
     )
 
     add_executable(test_expresslrs_sender ${TEST_SOURCES})

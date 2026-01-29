@@ -95,14 +95,17 @@ TEST_F(CrsfTest, RcFrameMinMax) {
     EXPECT_TRUE(validateFrame(frame.data(), frame.size()));
 }
 
-// FRM-003: Device ping frame
+// FRM-003: Device ping frame (extended format with dest/origin)
 TEST_F(CrsfTest, DevicePingFrame) {
     auto frame = buildDevicePingFrame();
 
-    EXPECT_EQ(frame.size(), 4u);
+    EXPECT_EQ(frame.size(), 6u);
     EXPECT_EQ(frame[0], CRSF_SYNC_BYTE);
-    EXPECT_EQ(frame[1], 2);  // Length
+    EXPECT_EQ(frame[1], 4);  // Length: Type + Dest + Origin + CRC
     EXPECT_EQ(frame[2], CRSF_FRAME_TYPE_DEVICE_PING);
+    EXPECT_EQ(frame[3], CRSF_ADDRESS_BROADCAST);   // default dest
+    EXPECT_EQ(frame[4], CRSF_ADDRESS_HANDSET);      // default origin
+    EXPECT_TRUE(validateFrame(frame.data(), frame.size()));
 }
 
 // FRM-004: RC frame length
@@ -231,4 +234,205 @@ TEST_F(CrsfTest, GetFrameType) {
 
     EXPECT_EQ(getFrameType(rc_frame.data(), rc_frame.size()), CRSF_FRAME_TYPE_RC_CHANNELS);
     EXPECT_EQ(getFrameType(ping_frame.data(), ping_frame.size()), CRSF_FRAME_TYPE_DEVICE_PING);
+}
+
+// --- Extended Ping Frame Tests ---
+
+TEST_F(CrsfTest, DevicePingFrameCustomAddresses) {
+    auto frame = buildDevicePingFrame(CRSF_ADDRESS_TRANSMITTER, CRSF_ADDRESS_FLIGHT_CONTROLLER);
+
+    EXPECT_EQ(frame.size(), 6u);
+    EXPECT_EQ(frame[0], CRSF_SYNC_BYTE);
+    EXPECT_EQ(frame[1], 4);
+    EXPECT_EQ(frame[2], CRSF_FRAME_TYPE_DEVICE_PING);
+    EXPECT_EQ(frame[3], CRSF_ADDRESS_TRANSMITTER);
+    EXPECT_EQ(frame[4], CRSF_ADDRESS_FLIGHT_CONTROLLER);
+    EXPECT_TRUE(validateFrame(frame.data(), frame.size()));
+}
+
+TEST_F(CrsfTest, DevicePingFrameCrcValid) {
+    auto frame = buildDevicePingFrame();
+    // CRC should be over bytes 2..4 (Type + Dest + Origin)
+    uint8_t expected_crc = crc8_dvb_s2(&frame[2], 3);
+    EXPECT_EQ(frame[5], expected_crc);
+}
+
+// --- extractFrame Tests ---
+
+TEST_F(CrsfTest, ExtractFrameValidPing) {
+    auto ping = buildDevicePingFrame();
+    std::vector<uint8_t> frame_out;
+
+    size_t consumed = extractFrame(ping.data(), ping.size(), frame_out);
+
+    EXPECT_EQ(consumed, ping.size());
+    EXPECT_EQ(frame_out, ping);
+}
+
+TEST_F(CrsfTest, ExtractFrameWithLeadingGarbage) {
+    auto ping = buildDevicePingFrame();
+    // Prepend garbage bytes
+    std::vector<uint8_t> data = {0x00, 0xFF, 0x42};
+    data.insert(data.end(), ping.begin(), ping.end());
+
+    std::vector<uint8_t> frame_out;
+    size_t consumed = extractFrame(data.data(), data.size(), frame_out);
+
+    EXPECT_EQ(frame_out, ping);
+    EXPECT_EQ(consumed, data.size());  // garbage + frame consumed
+}
+
+TEST_F(CrsfTest, ExtractFrameIncomplete) {
+    auto ping = buildDevicePingFrame();
+    // Only provide first 3 bytes (missing CRC and payload)
+    std::vector<uint8_t> partial(ping.begin(), ping.begin() + 3);
+
+    std::vector<uint8_t> frame_out;
+    size_t consumed = extractFrame(partial.data(), partial.size(), frame_out);
+
+    EXPECT_TRUE(frame_out.empty());
+    // Should stop at sync byte position since frame is incomplete
+    EXPECT_EQ(consumed, 0u);
+}
+
+TEST_F(CrsfTest, ExtractFrameRcChannels) {
+    auto channels = centerChannels();
+    auto rc_frame = buildRcChannelsFrame(channels);
+    std::vector<uint8_t> data(rc_frame.begin(), rc_frame.end());
+
+    std::vector<uint8_t> frame_out;
+    size_t consumed = extractFrame(data.data(), data.size(), frame_out);
+
+    EXPECT_EQ(consumed, rc_frame.size());
+    EXPECT_EQ(frame_out.size(), rc_frame.size());
+}
+
+TEST_F(CrsfTest, ExtractFrameEmptyBuffer) {
+    std::vector<uint8_t> frame_out;
+    size_t consumed = extractFrame(nullptr, 0, frame_out);
+
+    EXPECT_EQ(consumed, 0u);
+    EXPECT_TRUE(frame_out.empty());
+}
+
+// --- parseDeviceInfoFrame Tests ---
+
+// Helper to build a valid DEVICE_INFO frame for testing
+static std::vector<uint8_t> buildTestDeviceInfoFrame(const std::string& name) {
+    // Frame structure:
+    // [0] Sync/Addr  [1] Len  [2] Type  [3] Dest  [4] Origin
+    // [5..] DeviceName\0  Serial(4)  HW_ID(4)  FW_ID(4)  ParamCount(1)  ParamVer(1)
+    // [last] CRC
+
+    std::vector<uint8_t> frame;
+    frame.push_back(CRSF_ADDRESS_FLIGHT_CONTROLLER);  // Sync (response comes from TX module to FC addr)
+
+    // Placeholder for length
+    frame.push_back(0);
+
+    frame.push_back(CRSF_FRAME_TYPE_DEVICE_INFO);  // Type
+    frame.push_back(CRSF_ADDRESS_HANDSET);           // Dest
+    frame.push_back(CRSF_ADDRESS_BROADCAST);         // Origin
+
+    // Device name (NUL-terminated)
+    for (char c : name) {
+        frame.push_back(static_cast<uint8_t>(c));
+    }
+    frame.push_back(0x00);  // NUL terminator
+
+    // Serial number (4 bytes)
+    frame.push_back(0x01); frame.push_back(0x02);
+    frame.push_back(0x03); frame.push_back(0x04);
+
+    // Hardware ID (4 bytes)
+    frame.push_back(0xA1); frame.push_back(0xA2);
+    frame.push_back(0xA3); frame.push_back(0xA4);
+
+    // Firmware ID (4 bytes)
+    frame.push_back(0xF1); frame.push_back(0xF2);
+    frame.push_back(0xF3); frame.push_back(0xF4);
+
+    // Parameter count and protocol version
+    frame.push_back(10);   // param count
+    frame.push_back(1);    // param protocol version
+
+    // Set length: everything from Type to last payload byte + CRC
+    // Length = total_size - 2 (sync + len bytes) + 1 (CRC we'll add)
+    // Actually: Length = payload_size + 1 (CRC)
+    // payload_size = frame.size() - 2 (excluding sync and len)
+    frame[1] = static_cast<uint8_t>(frame.size() - 2 + 1);  // +1 for CRC
+
+    // Calculate CRC over Type + Payload (bytes 2 to end)
+    uint8_t crc = crc8_dvb_s2(&frame[2], frame.size() - 2);
+    frame.push_back(crc);
+
+    return frame;
+}
+
+TEST_F(CrsfTest, ParseDeviceInfoValid) {
+    auto frame = buildTestDeviceInfoFrame("ELRS TX");
+
+    auto info = parseDeviceInfoFrame(frame.data(), frame.size());
+
+    ASSERT_TRUE(info.has_value());
+    EXPECT_EQ(info->device_name, "ELRS TX");
+    EXPECT_EQ(info->serial_number[0], 0x01);
+    EXPECT_EQ(info->serial_number[1], 0x02);
+    EXPECT_EQ(info->serial_number[2], 0x03);
+    EXPECT_EQ(info->serial_number[3], 0x04);
+    EXPECT_EQ(info->hardware_id[0], 0xA1);
+    EXPECT_EQ(info->hardware_id[3], 0xA4);
+    EXPECT_EQ(info->firmware_id[0], 0xF1);
+    EXPECT_EQ(info->firmware_id[3], 0xF4);
+    EXPECT_EQ(info->parameter_count, 10);
+    EXPECT_EQ(info->parameter_protocol_version, 1);
+}
+
+TEST_F(CrsfTest, ParseDeviceInfoEmptyName) {
+    auto frame = buildTestDeviceInfoFrame("");
+
+    auto info = parseDeviceInfoFrame(frame.data(), frame.size());
+
+    ASSERT_TRUE(info.has_value());
+    EXPECT_EQ(info->device_name, "");
+    EXPECT_EQ(info->parameter_count, 10);
+}
+
+TEST_F(CrsfTest, ParseDeviceInfoTooShort) {
+    // Frame too short to contain all required fields
+    uint8_t short_frame[] = {0xC8, 0x03, 0x29, 0x00, 0x00};
+    auto info = parseDeviceInfoFrame(short_frame, sizeof(short_frame));
+
+    EXPECT_FALSE(info.has_value());
+}
+
+TEST_F(CrsfTest, ParseDeviceInfoWrongType) {
+    auto frame = buildTestDeviceInfoFrame("Test");
+    // Change type to something else
+    frame[2] = CRSF_FRAME_TYPE_DEVICE_PING;
+    // Recalculate CRC
+    frame.back() = crc8_dvb_s2(&frame[2], frame.size() - 3);
+
+    auto info = parseDeviceInfoFrame(frame.data(), frame.size());
+
+    EXPECT_FALSE(info.has_value());
+}
+
+TEST_F(CrsfTest, ParseDeviceInfoBadCrc) {
+    auto frame = buildTestDeviceInfoFrame("Test");
+    // Corrupt CRC
+    frame.back() ^= 0xFF;
+
+    auto info = parseDeviceInfoFrame(frame.data(), frame.size());
+
+    EXPECT_FALSE(info.has_value());
+}
+
+// --- validateFrame extended sync byte test ---
+
+TEST_F(CrsfTest, ValidateFrameWithFcAddress) {
+    // Build a frame using FC address (0xC8) as sync byte
+    auto frame = buildTestDeviceInfoFrame("Test");
+    EXPECT_EQ(frame[0], CRSF_ADDRESS_FLIGHT_CONTROLLER);
+    EXPECT_TRUE(validateFrame(frame.data(), frame.size()));
 }

@@ -27,6 +27,69 @@ Raspberry Pi + BETAFPV NANO TX V2 を使用して、事前に記録した操作�
 | 5V | VCC |
 | GND | GND |
 
+## GPIO/UART の選択
+
+Raspberry Pi 4/5 では複数の UART を利用できます。`--gpio` オプションまたは `gpio` サブコマンドで GPIO ピンと UART の対応を確認・指定できます。
+
+### 利用可能な UART-GPIO マッピング
+
+| UART | GPIO TX | GPIO RX | デバイス | 備考 |
+|------|---------|---------|---------|------|
+| UART0 | 14 | 15 | /dev/ttyAMA0 | デフォルト（PL011） |
+| UART2 | 0 | 1 | /dev/ttyAMA1 | I2C0 と共有 |
+| UART3 | 4 | 5 | /dev/ttyAMA2 | |
+| UART4 | 8 | 9 | /dev/ttyAMA3 | SPI0 CE0/CE1 と共有 |
+| UART5 | 12 | 13 | /dev/ttyAMA4 | |
+
+UART1（mini UART）は 420000 baud を安定してサポートできないため除外しています。
+
+### UART の有効化
+
+追加の UART を使用するには `/boot/config.txt`（Pi 5 では `/boot/firmware/config.txt`）に dtoverlay を追加します:
+
+```
+dtoverlay=uart3
+dtoverlay=uart4
+dtoverlay=uart5
+```
+
+再起動後に有効になります。
+
+### GPIO ピン指定での接続
+
+```bash
+# GPIO4 (UART3) を使用
+sudo ./expresslrs_sender --gpio 4 play -H data/flight.csv
+
+# GPIO12 (UART5) を使用
+sudo ./expresslrs_sender --gpio 12 ping
+```
+
+### マッピングテーブルの表示
+
+```bash
+./expresslrs_sender gpio
+```
+
+### 設定ファイルでの指定
+
+`config/default.json` で `gpio_tx` を指定すると、`port` の代わりに GPIO ピン番号から自動的にデバイスパスが解決されます:
+
+```json
+{
+  "device": {
+    "gpio_tx": 4,
+    "baudrate": 420000
+  }
+}
+```
+
+### 注意事項
+
+- UART2 (GPIO0/1) は I2C0 とピンを共有しています。I2C を使用する場合は避けてください
+- UART4 (GPIO8/9) は SPI0 CE0/CE1 とピンを共有しています
+- `--gpio` オプションと `-d`/`--device` を同時に指定した場合、後に指定した方が優先されます
+
 ## 依存ライブラリのインストール
 
 ### Raspberry Pi (Debian/Ubuntu)
@@ -188,7 +251,8 @@ sudo ./expresslrs_sender -c config/custom.json play -H data/flight.csv
     "port": "/dev/ttyAMA0",
     "baudrate": 420000,
     "invert_tx": false,
-    "invert_rx": false
+    "invert_rx": false,
+    "gpio_tx": -1
   },
   "playback": {
     "default_rate_hz": 50,

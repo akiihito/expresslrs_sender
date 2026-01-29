@@ -38,13 +38,11 @@ TEST_F(Crc8Test, MultipleBytes) {
 
 // CRC-005: Known CRSF frame verification
 TEST_F(Crc8Test, KnownCrsfFrame) {
-    // Device ping frame: Type = 0x28
-    uint8_t type = CRSF_FRAME_TYPE_DEVICE_PING;
-    uint8_t crc = crc8_dvb_s2(&type, 1);
-
-    // The CRC should match what buildDevicePingFrame produces
+    // Device ping frame (extended): Type(0x28) + Dest + Origin
     auto ping_frame = buildDevicePingFrame();
-    EXPECT_EQ(crc, ping_frame[3]);
+    // CRC is over bytes 2..4 (Type + Dest + Origin)
+    uint8_t crc = crc8_dvb_s2(&ping_frame[2], 3);
+    EXPECT_EQ(crc, ping_frame[5]);
 }
 
 // Test incremental CRC calculation
@@ -68,7 +66,7 @@ TEST_F(Crc8Test, IncrementalCalculation) {
 TEST_F(Crc8Test, PolynomialProperty) {
     // CRC-8 DVB-S2 uses polynomial 0xD5
     // Verify that 0x80 XOR'd with the polynomial gives expected result
-    uint8_t crc = crc8_dvb_s2(0x00, 0x80);
+    uint8_t crc = crc8_dvb_s2(static_cast<uint8_t>(0x00), static_cast<uint8_t>(0x80));
 
     // After processing 0x80 with initial CRC 0, should get 0xD5 >> shifts
     // This is implementation specific but should be consistent

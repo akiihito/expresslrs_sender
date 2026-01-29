@@ -1,6 +1,8 @@
 #include "safety_monitor.hpp"
 
 #include <csignal>
+#include <cstring>
+#include <unistd.h>
 
 #include <spdlog/spdlog.h>
 

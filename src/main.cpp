@@ -9,6 +9,7 @@
 
 #include "config/config.hpp"
 #include "crsf/crsf.hpp"
+#include "gpio/gpio_uart_map.hpp"
 #include "history/history_loader.hpp"
 #include "playback/playback_controller.hpp"
 #include "safety/safety_monitor.hpp"
@@ -26,6 +27,7 @@ void printHelp(const char* program) {
         << "Global Options:\n"
         << "  -c, --config <file>    Config file (default: config/default.json)\n"
         << "  -d, --device <path>    UART device (default: /dev/ttyAMA0)\n"
+        << "  -g, --gpio <pin>       GPIO TX pin number (auto-resolves UART device)\n"
         << "  -b, --baudrate <bps>   Baudrate (default: 420000)\n"
         << "  -v, --verbose          Verbose output\n"
         << "  -q, --quiet            Quiet mode (errors only)\n"
@@ -36,7 +38,8 @@ void printHelp(const char* program) {
         << "  validate   Validate history file\n"
         << "  ping       Ping TX module\n"
         << "  info       Show device info\n"
-        << "  send       Send single command\n\n"
+        << "  send       Send single command\n"
+        << "  gpio       Show GPIO-UART mapping table\n\n"
         << "Run '" << program << " <command> --help' for command-specific options.\n";
 }
 
@@ -301,6 +304,39 @@ int cmdValidate(config::AppConfig& config, int argc, char* argv[]) {
     return validation.valid ? 0 : static_cast<int>(ErrorCode::HistoryError);
 }
 
+// Read a complete CRSF frame from UART with timeout
+bool readCrsfFrame(uart::UartDriver& uart, std::vector<uint8_t>& frame_out, int timeout_ms) {
+    std::vector<uint8_t> buffer;
+    buffer.reserve(CRSF_MAX_FRAME_SIZE * 2);
+
+    auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeout_ms);
+
+    while (std::chrono::steady_clock::now() < deadline) {
+        auto remaining = std::chrono::duration_cast<std::chrono::milliseconds>(
+            deadline - std::chrono::steady_clock::now());
+        int read_timeout = std::max(1, static_cast<int>(remaining.count()));
+
+        auto read_result = uart.read(CRSF_MAX_FRAME_SIZE, read_timeout);
+        if (read_result.ok() && !read_result.value.empty()) {
+            buffer.insert(buffer.end(), read_result.value.begin(), read_result.value.end());
+        }
+
+        // Try to extract a frame from accumulated data
+        if (!buffer.empty()) {
+            size_t consumed = crsf::extractFrame(buffer.data(), buffer.size(), frame_out);
+            if (!frame_out.empty()) {
+                return true;
+            }
+            // Remove consumed garbage bytes
+            if (consumed > 0 && consumed <= buffer.size()) {
+                buffer.erase(buffer.begin(), buffer.begin() + static_cast<ptrdiff_t>(consumed));
+            }
+        }
+    }
+
+    return false;
+}
+
 // Command: ping
 int cmdPing(config::AppConfig& config, int argc, char* argv[]) {
     int timeout_ms = 1000;
@@ -341,13 +377,27 @@ int cmdPing(config::AppConfig& config, int argc, char* argv[]) {
             continue;
         }
 
-        auto read_result = uart.read(64, timeout_ms);
+        std::vector<uint8_t> response;
+        bool got_frame = readCrsfFrame(uart, response, timeout_ms);
         auto end = std::chrono::steady_clock::now();
 
-        if (read_result.ok() && !read_result.value.empty()) {
+        if (got_frame) {
             auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
             double ms = elapsed.count() / 1000.0;
-            std::cout << "Response: time=" << ms << "ms\n";
+
+            uint8_t frame_type = crsf::getFrameType(response.data(), response.size());
+            if (frame_type == CRSF_FRAME_TYPE_DEVICE_INFO) {
+                auto info = crsf::parseDeviceInfoFrame(response.data(), response.size());
+                if (info) {
+                    std::cout << "Response from " << info->device_name
+                              << ": time=" << ms << "ms\n";
+                } else {
+                    std::cout << "Response (DEVICE_INFO, parse failed): time=" << ms << "ms\n";
+                }
+            } else {
+                std::cout << "Response (type=0x" << std::hex << static_cast<int>(frame_type)
+                          << std::dec << "): time=" << ms << "ms\n";
+            }
             received++;
             total_time += ms;
         } else {
@@ -372,8 +422,13 @@ int cmdPing(config::AppConfig& config, int argc, char* argv[]) {
 
 // Command: info
 int cmdInfo(config::AppConfig& config, int argc, char* argv[]) {
-    (void)argc;
-    (void)argv;
+    int timeout_ms = 2000;
+
+    for (int i = 0; i < argc; i++) {
+        if (strcmp(argv[i], "-t") == 0 || strcmp(argv[i], "--timeout") == 0) {
+            if (i + 1 < argc) timeout_ms = std::stoi(argv[++i]);
+        }
+    }
 
     uart::UartDriver uart;
     uart::UartOptions uart_opts;
@@ -387,11 +442,54 @@ int cmdInfo(config::AppConfig& config, int argc, char* argv[]) {
         return static_cast<int>(uart_result.error);
     }
 
+    std::cout << "Querying device info on " << config.device_port << "...\n";
+
+    // Send DEVICE_PING to elicit DEVICE_INFO response
+    auto ping_frame = crsf::buildDevicePingFrame();
+    auto write_result = uart.write(ping_frame);
+    if (!write_result.ok()) {
+        spdlog::error("Failed to send ping: {}", write_result.message);
+        return static_cast<int>(ErrorCode::DeviceError);
+    }
+
+    // Read response
+    std::vector<uint8_t> response;
+    bool got_frame = readCrsfFrame(uart, response, timeout_ms);
+
+    if (!got_frame) {
+        spdlog::error("No response from device (timeout {}ms)", timeout_ms);
+        return static_cast<int>(ErrorCode::DeviceError);
+    }
+
+    uint8_t frame_type = crsf::getFrameType(response.data(), response.size());
+    if (frame_type != CRSF_FRAME_TYPE_DEVICE_INFO) {
+        spdlog::error("Unexpected response type: 0x{:02X} (expected DEVICE_INFO 0x{:02X})",
+                       frame_type, CRSF_FRAME_TYPE_DEVICE_INFO);
+        return static_cast<int>(ErrorCode::DeviceError);
+    }
+
+    auto info = crsf::parseDeviceInfoFrame(response.data(), response.size());
+    if (!info) {
+        spdlog::error("Failed to parse DEVICE_INFO response");
+        return static_cast<int>(ErrorCode::DeviceError);
+    }
+
+    // Format serial/hw/fw as hex strings
+    auto formatHex = [](const std::array<uint8_t, 4>& arr) -> std::string {
+        char buf[12];
+        snprintf(buf, sizeof(buf), "%02X%02X%02X%02X", arr[0], arr[1], arr[2], arr[3]);
+        return std::string(buf);
+    };
+
     std::cout << "Device: " << config.device_port << "\n"
         << "Baudrate: " << config.baudrate << "\n"
-        << "Protocol: CRSF\n";
-
-    // TODO: Query actual device info via CRSF DEVICE_INFO frame
+        << "Protocol: CRSF\n"
+        << "Device Name: " << info->device_name << "\n"
+        << "Serial: " << formatHex(info->serial_number) << "\n"
+        << "Hardware ID: " << formatHex(info->hardware_id) << "\n"
+        << "Firmware ID: " << formatHex(info->firmware_id) << "\n"
+        << "Parameters: " << static_cast<int>(info->parameter_count) << "\n"
+        << "Parameter Protocol: " << static_cast<int>(info->parameter_protocol_version) << "\n";
 
     return 0;
 }
@@ -484,6 +582,34 @@ int cmdSend(config::AppConfig& config, int argc, char* argv[]) {
     return 0;
 }
 
+// Command: gpio
+int cmdGpio() {
+    auto uarts = gpio::getAvailableUarts();
+
+    std::cout << "Available UART-GPIO mappings (Raspberry Pi 4/5):\n\n"
+        << "  UART   GPIO TX  GPIO RX  Device         Description\n"
+        << "  -----  -------  -------  -------------  ---------------------------\n";
+
+    for (const auto& info : uarts) {
+        char line[128];
+        snprintf(line, sizeof(line), "  UART%d  %-7d  %-7d  %-13s  %s",
+                 info.uart_number, info.gpio_tx, info.gpio_rx,
+                 info.device_path.c_str(), info.description.c_str());
+        std::cout << line << "\n";
+    }
+
+    std::cout << "\nNote:\n"
+        << "  - UART1 (mini UART) is excluded (unreliable at 420000 baud)\n"
+        << "  - UART2 (GPIO0/1) is shared with I2C0\n"
+        << "  - UART4 (GPIO8/9) is shared with SPI0 CE0/CE1\n"
+        << "  - Enable additional UARTs in /boot/config.txt:\n"
+        << "      dtoverlay=uart3\n"
+        << "      dtoverlay=uart4\n"
+        << "      dtoverlay=uart5\n";
+
+    return 0;
+}
+
 int main(int argc, char* argv[]) {
     // Default configuration
     config::AppConfig config = config::getDefaultConfig();
@@ -500,6 +626,11 @@ int main(int argc, char* argv[]) {
             if (i + 1 < argc) config_file = argv[++i];
         } else if (strcmp(argv[i], "-d") == 0 || strcmp(argv[i], "--device") == 0) {
             if (i + 1 < argc) config.device_port = argv[++i];
+        } else if (strcmp(argv[i], "-g") == 0 || strcmp(argv[i], "--gpio") == 0) {
+            if (i + 1 < argc) {
+                config.gpio_tx = std::stoi(argv[++i]);
+                config.device_port = gpio::resolveDevicePath(std::to_string(config.gpio_tx));
+            }
         } else if (strcmp(argv[i], "-b") == 0 || strcmp(argv[i], "--baudrate") == 0) {
             if (i + 1 < argc) config.baudrate = std::stoi(argv[++i]);
         } else if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--verbose") == 0) {
@@ -555,6 +686,8 @@ int main(int argc, char* argv[]) {
         return cmdInfo(config, cmd_argc, cmd_argv);
     } else if (command == "send") {
         return cmdSend(config, cmd_argc, cmd_argv);
+    } else if (command == "gpio") {
+        return cmdGpio();
     } else {
         std::cerr << "Unknown command: " << command << "\n";
         printHelp(argv[0]);

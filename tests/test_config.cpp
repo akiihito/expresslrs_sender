@@ -144,6 +144,54 @@ TEST_F(ConfigTest, EmptyConfigUsesDefaults) {
     EXPECT_EQ(result.value.baudrate, defaults.baudrate);
 }
 
+// CFG-006: gpio_tx resolves device_port
+TEST_F(ConfigTest, GpioTxResolvesDevicePort) {
+    std::string content = R"({
+        "device": {
+            "gpio_tx": 4
+        }
+    })";
+
+    auto path = createFile("gpio.json", content);
+    auto result = loadConfig(path);
+
+    EXPECT_TRUE(result.ok());
+    EXPECT_EQ(result.value.gpio_tx, 4);
+    EXPECT_EQ(result.value.device_port, "/dev/ttyAMA2");
+}
+
+// CFG-007: gpio_tx with unknown pin keeps default device_port
+TEST_F(ConfigTest, GpioTxUnknownPinKeepsDefault) {
+    std::string content = R"({
+        "device": {
+            "gpio_tx": 99
+        }
+    })";
+
+    auto path = createFile("gpio_unknown.json", content);
+    auto result = loadConfig(path);
+
+    EXPECT_TRUE(result.ok());
+    EXPECT_EQ(result.value.gpio_tx, 99);
+    EXPECT_EQ(result.value.device_port, "/dev/ttyAMA0");  // Default unchanged
+}
+
+// CFG-008: gpio_tx=-1 (default) does not override device_port
+TEST_F(ConfigTest, GpioTxNegativeDoesNotOverride) {
+    std::string content = R"({
+        "device": {
+            "port": "/dev/ttyUSB0"
+        }
+    })";
+
+    auto path = createFile("gpio_default.json", content);
+    auto result = loadConfig(path);
+
+    EXPECT_TRUE(result.ok());
+    EXPECT_EQ(result.value.gpio_tx, -1);
+    EXPECT_EQ(result.value.device_port, "/dev/ttyUSB0");
+}
+
 // Nested object missing
 TEST_F(ConfigTest, NestedObjectMissing) {
     std::string content = R"({

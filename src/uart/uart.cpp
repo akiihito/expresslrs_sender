@@ -146,8 +146,12 @@ Result<void> UartDriver::configure(int baudrate) {
         case 57600:   speed = B57600; break;
         case 115200:  speed = B115200; break;
         case 230400:  speed = B230400; break;
+#ifdef B460800
         case 460800:  speed = B460800; break;
+#endif
+#ifdef B921600
         case 921600:  speed = B921600; break;
+#endif
         case 420000:
             // 420000 is not a standard baud rate
             // Use custom baud rate via termios2 on Linux

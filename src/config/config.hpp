@@ -16,6 +16,7 @@ struct AppConfig {
     int baudrate = CRSF_BAUDRATE;
     bool invert_tx = false;  // UART TX信号反転（一部のモジュール接続で必要）
     bool invert_rx = false;  // UART RX信号反転
+    int gpio_tx = -1;        // GPIO TXピン番号（-1 = 未指定）
 
     // Playback defaults
     playback::PlaybackOptions playback;

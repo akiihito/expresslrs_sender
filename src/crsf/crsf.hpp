@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cstdint>
+#include <optional>
 #include <vector>
 
 #include "expresslrs_sender/types.hpp"
@@ -27,8 +28,16 @@ void unpackChannels(const uint8_t* input, ChannelData& channels);
 // Build CRSF RC channels frame (26 bytes total)
 std::array<uint8_t, CRSF_RC_FRAME_SIZE> buildRcChannelsFrame(const ChannelData& channels);
 
-// Build CRSF device ping frame
-std::vector<uint8_t> buildDevicePingFrame();
+// Build CRSF device ping frame (extended format with dest/origin addresses)
+std::vector<uint8_t> buildDevicePingFrame(uint8_t dest_addr = CRSF_ADDRESS_BROADCAST,
+                                          uint8_t origin_addr = CRSF_ADDRESS_HANDSET);
+
+// Extract a complete CRSF frame from a byte buffer
+// Returns the number of bytes consumed (0 if no complete frame found)
+size_t extractFrame(const uint8_t* data, size_t len, std::vector<uint8_t>& frame_out);
+
+// Parse a DEVICE_INFO response frame
+std::optional<DeviceInfo> parseDeviceInfoFrame(const uint8_t* data, size_t len);
 
 // Validate CRSF frame
 bool validateFrame(const uint8_t* data, size_t len);

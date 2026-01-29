@@ -4,6 +4,8 @@
 
 #include <nlohmann/json.hpp>
 
+#include "gpio/gpio_uart_map.hpp"
+
 namespace elrs {
 namespace config {
 
@@ -76,6 +78,9 @@ Result<AppConfig> loadConfig(const std::string& filepath) {
             if (device.contains("invert_rx")) {
                 config.invert_rx = device["invert_rx"].get<bool>();
             }
+            if (device.contains("gpio_tx")) {
+                config.gpio_tx = device["gpio_tx"].get<int>();
+            }
         }
 
         // Playback settings
@@ -128,6 +133,14 @@ Result<AppConfig> loadConfig(const std::string& filepath) {
             ErrorCode::ConfigError,
             "Error reading config values: " + std::string(e.what())
         );
+    }
+
+    // Resolve device_port from gpio_tx if specified
+    if (config.gpio_tx >= 0) {
+        auto info = gpio::findByGpioTx(config.gpio_tx);
+        if (info) {
+            config.device_port = info->device_path;
+        }
     }
 
     return Result<AppConfig>::success(config);

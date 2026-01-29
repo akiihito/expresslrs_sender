@@ -3,7 +3,8 @@
     "port": "/dev/ttyAMA0",
     "baudrate": 420000,
     "invert_tx": false,
-    "invert_rx": false
+    "invert_rx": false,
+    "gpio_tx": -1
   },
   "playback": {
     "default_rate_hz": 50,
