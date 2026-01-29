@@ -25,8 +25,9 @@ NANO TX V2 の CRSF 通信は S.Port ピン1本によるハーフデュプレッ
 | Raspberry Pi | NANO TX V2 |
 |-------------|------------|
 | GPIO14 (TXD) | S.Port (Signal) |
-| 5V | VCC |
 | GND | GND |
+
+NANO TX V2 の電源は **7V〜13V（2S〜3S LiPo）** が必要です。Raspberry Pi の 5V ピンでは動作しません。別途 2S LiPo バッテリーや付属の USB-C to XT30 ケーブル等で給電してください。500mW / 1W 出力時は最低 7V（2S）以上が必要です。
 
 テレメトリ受信が必要な場合は GPIO15 (RXD) も S.Port に接続しますが、半二重のためソフトウェア側での送受信制御が必要です。
 
