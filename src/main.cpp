@@ -1,6 +1,7 @@
 #include <chrono>
 #include <cstring>
 #include <iostream>
+#include <sstream>
 #include <thread>
 
 #include <spdlog/spdlog.h>
