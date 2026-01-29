@@ -20,12 +20,15 @@ Raspberry Pi + BETAFPV NANO TX V2 を使用して、事前に記録した操作�
 
 ## 接続
 
+NANO TX V2 の CRSF 通信は S.Port ピン1本によるハーフデュプレックスです。
+
 | Raspberry Pi | NANO TX V2 |
 |-------------|------------|
-| GPIO14 (TXD) | RX |
-| GPIO15 (RXD) | TX |
+| GPIO14 (TXD) | S.Port (Signal) |
 | 5V | VCC |
 | GND | GND |
+
+テレメトリ受信が必要な場合は GPIO15 (RXD) も S.Port に接続しますが、半二重のためソフトウェア側での送受信制御が必要です。
 
 ## GPIO/UART の選択
 
@@ -332,7 +335,7 @@ sudo usermod -a -G dialout $USER
 
 ### TXモジュールと通信できない
 
-1. 接続を確認（TX/RXが正しく接続されているか）
+1. 接続を確認（GPIO TX が S.Port ピンに正しく接続されているか）
 2. 信号反転が必要な場合は設定で `"invert_tx": true`
 3. ボーレートが正しいか確認（420000 bps）
 
