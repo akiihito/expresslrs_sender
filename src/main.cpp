@@ -620,20 +620,22 @@ int main(int argc, char* argv[]) {
     int cmd_argc = 0;
     char** cmd_argv = nullptr;
 
+    // CLI overrides (applied after config file loading)
+    std::string cli_device;
+    int cli_gpio_tx = -1;
+    int cli_baudrate = -1;
+
     // Parse global arguments
     int i = 1;
     while (i < argc) {
         if (strcmp(argv[i], "-c") == 0 || strcmp(argv[i], "--config") == 0) {
             if (i + 1 < argc) config_file = argv[++i];
         } else if (strcmp(argv[i], "-d") == 0 || strcmp(argv[i], "--device") == 0) {
-            if (i + 1 < argc) config.device_port = argv[++i];
+            if (i + 1 < argc) cli_device = argv[++i];
         } else if (strcmp(argv[i], "-g") == 0 || strcmp(argv[i], "--gpio") == 0) {
-            if (i + 1 < argc) {
-                config.gpio_tx = std::stoi(argv[++i]);
-                config.device_port = gpio::resolveDevicePath(std::to_string(config.gpio_tx));
-            }
+            if (i + 1 < argc) cli_gpio_tx = std::stoi(argv[++i]);
         } else if (strcmp(argv[i], "-b") == 0 || strcmp(argv[i], "--baudrate") == 0) {
-            if (i + 1 < argc) config.baudrate = std::stoi(argv[++i]);
+            if (i + 1 < argc) cli_baudrate = std::stoi(argv[++i]);
         } else if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--verbose") == 0) {
             log_level = "debug";
         } else if (strcmp(argv[i], "-q") == 0 || strcmp(argv[i], "--quiet") == 0) {
@@ -665,6 +667,18 @@ int main(int argc, char* argv[]) {
             return static_cast<int>(config_result.error);
         }
         config = config_result.value;
+    }
+
+    // Apply CLI overrides (take precedence over config file)
+    if (!cli_device.empty()) {
+        config.device_port = cli_device;
+    }
+    if (cli_gpio_tx >= 0) {
+        config.gpio_tx = cli_gpio_tx;
+        config.device_port = gpio::resolveDevicePath(std::to_string(cli_gpio_tx));
+    }
+    if (cli_baudrate >= 0) {
+        config.baudrate = cli_baudrate;
     }
 
     // Setup logging
