@@ -11,8 +11,8 @@ out/
 *.dylib
 
 # Executables
-expresslrs_sender
-test_expresslrs_sender
+/expresslrs_sender
+/test_expresslrs_sender
 
 # IDE / Editor
 .vscode/
