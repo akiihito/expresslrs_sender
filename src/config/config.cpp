@@ -19,7 +19,7 @@ AppConfig getDefaultConfig() {
     config.baudrate = CRSF_BAUDRATE;
 
     // Playback defaults
-    config.playback.rate_hz = 50.0;
+    config.playback.rate_hz = 500.0;
     config.playback.loop = false;
     config.playback.loop_count = 0;
     config.playback.start_time_ms = 0;
@@ -77,6 +77,9 @@ Result<AppConfig> loadConfig(const std::string& filepath) {
             }
             if (device.contains("invert_rx")) {
                 config.invert_rx = device["invert_rx"].get<bool>();
+            }
+            if (device.contains("half_duplex")) {
+                config.half_duplex = device["half_duplex"].get<bool>();
             }
             if (device.contains("gpio_tx")) {
                 config.gpio_tx = device["gpio_tx"].get<int>();

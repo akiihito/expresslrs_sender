@@ -12,7 +12,7 @@ namespace playback {
 
 // Playback options
 struct PlaybackOptions {
-    double rate_hz = 50.0;          // Packet send rate
+    double rate_hz = 500.0;         // Packet send rate
     bool loop = false;              // Loop playback
     int loop_count = 0;             // 0 = infinite
     uint32_t start_time_ms = 0;     // Start position

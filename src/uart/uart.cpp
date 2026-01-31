@@ -249,6 +249,11 @@ Result<size_t> UartDriver::write(const uint8_t* data, size_t len) {
         );
     }
 
+    // 半二重モードでは送信完了を待つ（バス衝突防止）
+    if (m_options.half_duplex) {
+        tcdrain(m_fd);
+    }
+
     return Result<size_t>::success(static_cast<size_t>(written));
 }
 
@@ -305,6 +310,11 @@ Result<std::vector<uint8_t>> UartDriver::read(size_t max_len, int timeout_ms) {
     }
 
     return Result<std::vector<uint8_t>>::success(std::move(buffer));
+}
+
+void UartDriver::setTxEnabled(bool /* enabled */) {
+    // 現時点ではソフトウェア制御不要（ハード側で抵抗接続を推奨）
+    // GPIO による送受信切替が必要な場合はここに実装
 }
 
 void UartDriver::flush() {

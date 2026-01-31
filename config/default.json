@@ -1,13 +1,14 @@
 {
   "device": {
     "port": "/dev/ttyAMA0",
-    "baudrate": 420000,
-    "invert_tx": false,
+    "baudrate": 921600,
+    "invert_tx": true,
     "invert_rx": false,
+    "half_duplex": true,
     "gpio_tx": -1
   },
   "playback": {
-    "default_rate_hz": 50,
+    "default_rate_hz": 500,
     "arm_delay_ms": 3000
   },
   "safety": {

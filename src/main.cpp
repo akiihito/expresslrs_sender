@@ -29,7 +29,7 @@ void printHelp(const char* program) {
         << "  -c, --config <file>    Config file (default: config/default.json)\n"
         << "  -d, --device <path>    UART device (default: /dev/ttyAMA0)\n"
         << "  -g, --gpio <pin>       GPIO TX pin number (auto-resolves UART device)\n"
-        << "  -b, --baudrate <bps>   Baudrate (default: 420000)\n"
+        << "  -b, --baudrate <bps>   Baudrate (default: 921600)\n"
         << "  -v, --verbose          Verbose output\n"
         << "  -q, --quiet            Quiet mode (errors only)\n"
         << "  -h, --help             Show this help\n"
@@ -48,7 +48,7 @@ void printPlayHelp(const char* program) {
     std::cout << "Usage: " << program << " play [options] -H <file>\n\n"
         << "Options:\n"
         << "  -H, --history <file>   History file to play (required)\n"
-        << "  -r, --rate <hz>        Packet rate (default: 50)\n"
+        << "  -r, --rate <hz>        Packet rate (default: 500)\n"
         << "  -l, --loop             Loop playback\n"
         << "  --loop-count <n>       Number of loops (0=infinite)\n"
         << "  --start-time <ms>      Start position\n"
@@ -166,14 +166,16 @@ int cmdPlay(config::AppConfig& config, int argc, char* argv[]) {
         uart_opts.baudrate = config.baudrate;
         uart_opts.invert_tx = config.invert_tx;
         uart_opts.invert_rx = config.invert_rx;
+        uart_opts.half_duplex = config.half_duplex;
 
         auto uart_result = uart.open(config.device_port, uart_opts);
         if (!uart_result.ok()) {
             spdlog::error("Failed to open UART: {}", uart_result.message);
             return static_cast<int>(uart_result.error);
         }
-        spdlog::info("Opened {} at {} baud{}", config.device_port, config.baudrate,
-            config.invert_tx ? " (TX inverted)" : "");
+        spdlog::info("Opened {} at {} baud{}{}", config.device_port, config.baudrate,
+            config.invert_tx ? " (TX inverted)" : "",
+            config.half_duplex ? " (half-duplex)" : "");
     } else {
         spdlog::info("Dry-run mode - not sending to device");
     }
@@ -356,6 +358,7 @@ int cmdPing(config::AppConfig& config, int argc, char* argv[]) {
     uart_opts.baudrate = config.baudrate;
     uart_opts.invert_tx = config.invert_tx;
     uart_opts.invert_rx = config.invert_rx;
+    uart_opts.half_duplex = config.half_duplex;
 
     auto uart_result = uart.open(config.device_port, uart_opts);
     if (!uart_result.ok()) {
@@ -436,6 +439,7 @@ int cmdInfo(config::AppConfig& config, int argc, char* argv[]) {
     uart_opts.baudrate = config.baudrate;
     uart_opts.invert_tx = config.invert_tx;
     uart_opts.invert_rx = config.invert_rx;
+    uart_opts.half_duplex = config.half_duplex;
 
     auto uart_result = uart.open(config.device_port, uart_opts);
     if (!uart_result.ok()) {
@@ -531,6 +535,7 @@ int cmdSend(config::AppConfig& config, int argc, char* argv[]) {
     uart_opts.baudrate = config.baudrate;
     uart_opts.invert_tx = config.invert_tx;
     uart_opts.invert_rx = config.invert_rx;
+    uart_opts.half_duplex = config.half_duplex;
 
     auto uart_result = uart.open(config.device_port, uart_opts);
     if (!uart_result.ok()) {
@@ -545,7 +550,7 @@ int cmdSend(config::AppConfig& config, int argc, char* argv[]) {
     spdlog::info("Sending for {}ms{}...", duration_ms, arm ? " (ARMED)" : "");
 
     auto start = std::chrono::steady_clock::now();
-    auto send_interval = std::chrono::milliseconds(20);  // 50Hz
+    auto send_interval = std::chrono::milliseconds(2);  // 500Hz
     auto last_send = start;
 
     while (!safety::SafetyMonitor::isShutdownRequested()) {
@@ -576,7 +581,7 @@ int cmdSend(config::AppConfig& config, int argc, char* argv[]) {
     auto disarm_frame = crsf::buildRcChannelsFrame(disarm_channels);
     for (int i = 0; i < 10; i++) {
         uart.write(disarm_frame);
-        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+        std::this_thread::sleep_for(std::chrono::milliseconds(2));
     }
 
     spdlog::info("Done");
@@ -600,7 +605,7 @@ int cmdGpio() {
     }
 
     std::cout << "\nNote:\n"
-        << "  - UART1 (mini UART) is excluded (unreliable at 420000 baud)\n"
+        << "  - UART1 (mini UART) is excluded (unreliable at 921600 baud)\n"
         << "  - UART2 (GPIO0/1) is shared with I2C0\n"
         << "  - UART4 (GPIO8/9) is shared with SPI0 CE0/CE1\n"
         << "  - Enable additional UARTs in /boot/config.txt:\n"

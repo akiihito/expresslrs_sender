@@ -78,8 +78,8 @@ TEST_F(ConfigTest, DefaultValuesForMissingFields) {
 
     EXPECT_TRUE(result.ok());
     EXPECT_EQ(result.value.device_port, "/dev/ttyUSB1");
-    EXPECT_EQ(result.value.baudrate, CRSF_BAUDRATE);  // Default
-    EXPECT_EQ(result.value.playback.rate_hz, 50.0);   // Default
+    EXPECT_EQ(result.value.baudrate, CRSF_BAUDRATE);  // Default (921600)
+    EXPECT_EQ(result.value.playback.rate_hz, 500.0);  // Default
     EXPECT_EQ(result.value.safety.arm_channel, 4);     // Default (CH5 - 1)
 }
 
@@ -123,7 +123,7 @@ TEST_F(ConfigTest, GetDefaultConfig) {
 
     EXPECT_EQ(config.device_port, "/dev/ttyAMA0");
     EXPECT_EQ(config.baudrate, CRSF_BAUDRATE);
-    EXPECT_EQ(config.playback.rate_hz, 50.0);
+    EXPECT_EQ(config.playback.rate_hz, 500.0);
     EXPECT_FALSE(config.playback.loop);
     EXPECT_EQ(config.safety.arm_channel, 4);
     EXPECT_EQ(config.safety.throttle_min, CRSF_CHANNEL_MIN);

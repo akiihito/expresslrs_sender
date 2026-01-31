@@ -6,7 +6,7 @@ namespace elrs {
 namespace gpio {
 
 // Raspberry Pi 4/5 UART-GPIO mapping table
-// UART1 (mini UART) is excluded as it cannot reliably support 420000 baud
+// UART1 (mini UART) is excluded as it cannot reliably support 921600 baud
 static const std::vector<GpioUartInfo> UART_MAP = {
     {14, 15, 0, "/dev/ttyAMA0", "UART0 (PL011) - default"},
     { 0,  1, 2, "/dev/ttyAMA1", "UART2 - shared with I2C0"},

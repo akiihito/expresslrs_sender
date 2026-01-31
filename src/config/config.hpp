@@ -14,8 +14,9 @@ struct AppConfig {
     // Device settings
     std::string device_port = "/dev/ttyAMA0";
     int baudrate = CRSF_BAUDRATE;
-    bool invert_tx = false;  // UART TX信号反転（一部のモジュール接続で必要）
+    bool invert_tx = true;   // UART TX信号反転（ELRS TX モジュールでは必要）
     bool invert_rx = false;  // UART RX信号反転
+    bool half_duplex = true; // 半二重通信（S.Port 1本接続）
     int gpio_tx = -1;        // GPIO TXピン番号（-1 = 未指定）
 
     // Playback defaults

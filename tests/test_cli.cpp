@@ -124,11 +124,11 @@ TEST_F(CliTest, DefaultValues) {
 
     // Default baudrate
     int default_baudrate = CRSF_BAUDRATE;
-    EXPECT_EQ(default_baudrate, 420000);
+    EXPECT_EQ(default_baudrate, 921600);
 
     // Default rate
-    double default_rate = 50.0;
-    EXPECT_DOUBLE_EQ(default_rate, 50.0);
+    double default_rate = 500.0;
+    EXPECT_DOUBLE_EQ(default_rate, 500.0);
 }
 
 // Option with value parsing

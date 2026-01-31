@@ -14,6 +14,7 @@ struct UartOptions {
     int baudrate = CRSF_BAUDRATE;
     bool invert_tx = false;  // ソフトウェアでTX信号を反転（一部のモジュールで必要）
     bool invert_rx = false;  // ソフトウェアでRX信号を反転
+    bool half_duplex = false; // 半二重通信モード（送信後 tcdrain で完了を保証）
 };
 
 class UartDriver {
@@ -50,6 +51,9 @@ public:
 
     // Read data (with timeout in ms, 0 = non-blocking)
     Result<std::vector<uint8_t>> read(size_t max_len, int timeout_ms = 100);
+
+    // Enable/disable TX (for half-duplex direction control)
+    void setTxEnabled(bool enabled);
 
     // Flush buffers
     void flush();

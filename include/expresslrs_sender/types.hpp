@@ -36,7 +36,8 @@ constexpr int16_t PWM_MID = 1500;
 constexpr int16_t PWM_MAX = 2012;
 
 // Default UART settings
-constexpr int CRSF_BAUDRATE = 420000;
+constexpr int CRSF_BAUDRATE = 921600;      // TX モジュール用 (ELRS V3.x)
+constexpr int CRSF_BAUDRATE_RX = 420000;   // レシーバー用
 
 // Channel data type
 using ChannelData = std::array<int16_t, CRSF_MAX_CHANNELS>;

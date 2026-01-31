@@ -56,7 +56,7 @@ Raspberry Pi 4/5 では複数の UART を利用できます。`--gpio` オプシ
 | UART4 | 8 | 9 | /dev/ttyAMA3 | SPI0 CE0/CE1 と共有 |
 | UART5 | 12 | 13 | /dev/ttyAMA4 | |
 
-UART1（mini UART）は 420000 baud を安定してサポートできないため除外しています。
+UART1（mini UART）は 921600 baud を安定してサポートできないため除外しています。
 
 ### UART の有効化
 
@@ -94,7 +94,7 @@ sudo ./expresslrs_sender --gpio 12 ping
 {
   "device": {
     "gpio_tx": 4,
-    "baudrate": 420000
+    "baudrate": 921600
   }
 }
 ```
@@ -264,13 +264,14 @@ sudo ./expresslrs_sender -c config/custom.json play -H data/flight.csv
 {
   "device": {
     "port": "/dev/ttyAMA0",
-    "baudrate": 420000,
-    "invert_tx": false,
+    "baudrate": 921600,
+    "invert_tx": true,
     "invert_rx": false,
+    "half_duplex": true,
     "gpio_tx": -1
   },
   "playback": {
-    "default_rate_hz": 50,
+    "default_rate_hz": 500,
     "arm_delay_ms": 3000
   },
   "safety": {
@@ -348,16 +349,9 @@ sudo usermod -a -G dialout $USER
 ### TXモジュールと通信できない
 
 1. 接続を確認（GPIO TX が S.Port ピンに正しく接続されているか）
-2. 信号反転が必要な場合は設定で `"invert_tx": true`
-3. ボーレートが正しいか確認（420000 bps）
-
-### ボーレートエラー
-
-Raspberry Pi で 420000 bps がサポートされていない場合:
-```bash
-# /boot/config.txt に追加
-init_uart_clock=64000000
-```
+2. ELRS V3.x TX モジュールでは `"invert_tx": true` が必要
+3. ボーレートが正しいか確認（TX モジュール: 921600 bps、レシーバー直接: 420000 bps）
+4. 半二重設定を確認（`"half_duplex": true`）
 
 ## ライセンス
 

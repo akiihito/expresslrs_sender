@@ -6,7 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Changed
+- TX モジュール通信パラメータを ELRS V3.x 仕様に修正
+  - デフォルトボーレートを 420000 → 921600 に変更（TX モジュール用）
+  - 旧値は `CRSF_BAUDRATE_RX` として保持（レシーバー直接接続用）
+  - デフォルト `invert_tx` を true に変更
+  - デフォルトパケットレートを 50Hz → 500Hz に変更
+
 ### Added
+- 半二重通信サポート (`half_duplex` 設定)
+  - `UartOptions` に `half_duplex` フィールド追加
+  - 半二重モード時は `tcdrain()` で送信完了を保証
+  - `UartDriver::setTxEnabled()` メソッド追加（将来の GPIO 制御用）
 - GPIO-UART マッピングユーティリティ (`src/gpio/gpio_uart_map.hpp/.cpp`)
   - GPIO TX ピン番号から UART デバイスパスを自動解決
   - Pi 4/5 の UART0/2/3/4/5 に対応（UART1 mini UART は除外）
@@ -27,7 +38,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 - CRSF プロトコル実装（RC チャンネルフレーム送信）
-- UART ドライバ（420000 baud カスタムボーレート対応）
+- UART ドライバ（カスタムボーレート対応）
 - 操作履歴再生（CSV/JSON 形式）
 - 安全機能（Arm インターロック、Failsafe、緊急停止）
 - CLI サブコマンド: play, validate, ping, info, send
