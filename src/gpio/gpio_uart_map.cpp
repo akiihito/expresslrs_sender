@@ -9,10 +9,10 @@ namespace gpio {
 // UART1 (mini UART) is excluded as it cannot reliably support 921600 baud
 static const std::vector<GpioUartInfo> UART_MAP = {
     {14, 15, 0, "/dev/ttyAMA0", "UART0 (PL011) - default"},
-    { 0,  1, 2, "/dev/ttyAMA1", "UART2 - shared with I2C0"},
-    { 4,  5, 3, "/dev/ttyAMA2", "UART3"},
-    { 8,  9, 4, "/dev/ttyAMA3", "UART4 - shared with SPI0 CE0/CE1"},
-    {12, 13, 5, "/dev/ttyAMA4", "UART5"},
+    { 0,  1, 2, "/dev/ttyAMA2", "UART2 - shared with I2C0"},
+    { 4,  5, 3, "/dev/ttyAMA3", "UART3"},
+    { 8,  9, 4, "/dev/ttyAMA4", "UART4 - shared with SPI0 CE0/CE1"},
+    {12, 13, 5, "/dev/ttyAMA5", "UART5"},
 };
 
 std::vector<GpioUartInfo> getAvailableUarts() {

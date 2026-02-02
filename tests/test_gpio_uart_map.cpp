@@ -21,12 +21,12 @@ TEST_F(GpioUartMapTest, FindByGpioTx14) {
     EXPECT_EQ(info->gpio_rx, 15);
 }
 
-// GPIO-003: findByGpioTx(4) -> UART3, /dev/ttyAMA2
+// GPIO-003: findByGpioTx(4) -> UART3, /dev/ttyAMA3
 TEST_F(GpioUartMapTest, FindByGpioTx4) {
     auto info = findByGpioTx(4);
     ASSERT_TRUE(info.has_value());
     EXPECT_EQ(info->uart_number, 3);
-    EXPECT_EQ(info->device_path, "/dev/ttyAMA2");
+    EXPECT_EQ(info->device_path, "/dev/ttyAMA3");
     EXPECT_EQ(info->gpio_rx, 5);
 }
 
@@ -51,13 +51,13 @@ TEST_F(GpioUartMapTest, FindByUartNumber1Excluded) {
     EXPECT_FALSE(info.has_value());
 }
 
-// GPIO-007: findByUartNumber(3) -> GPIO4/5, /dev/ttyAMA2
+// GPIO-007: findByUartNumber(3) -> GPIO4/5, /dev/ttyAMA3
 TEST_F(GpioUartMapTest, FindByUartNumber3) {
     auto info = findByUartNumber(3);
     ASSERT_TRUE(info.has_value());
     EXPECT_EQ(info->gpio_tx, 4);
     EXPECT_EQ(info->gpio_rx, 5);
-    EXPECT_EQ(info->device_path, "/dev/ttyAMA2");
+    EXPECT_EQ(info->device_path, "/dev/ttyAMA3");
 }
 
 // GPIO-008: resolveDevicePath("14") -> /dev/ttyAMA0
@@ -65,9 +65,9 @@ TEST_F(GpioUartMapTest, ResolveDevicePathGpio14) {
     EXPECT_EQ(resolveDevicePath("14"), "/dev/ttyAMA0");
 }
 
-// GPIO-009: resolveDevicePath("4") -> /dev/ttyAMA2
+// GPIO-009: resolveDevicePath("4") -> /dev/ttyAMA3
 TEST_F(GpioUartMapTest, ResolveDevicePathGpio4) {
-    EXPECT_EQ(resolveDevicePath("4"), "/dev/ttyAMA2");
+    EXPECT_EQ(resolveDevicePath("4"), "/dev/ttyAMA3");
 }
 
 // GPIO-010: resolveDevicePath("/dev/ttyUSB0") -> passthrough

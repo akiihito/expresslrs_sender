@@ -5,7 +5,7 @@
     "invert_tx": true,
     "invert_rx": false,
     "half_duplex": true,
-    "gpio_tx": -1
+    "gpio_tx": 12
   },
   "playback": {
     "default_rate_hz": 500,

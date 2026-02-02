@@ -51,10 +51,10 @@ Raspberry Pi 4/5 では複数の UART を利用できます。`--gpio` オプシ
 | UART | GPIO TX | GPIO RX | デバイス | 備考 |
 |------|---------|---------|---------|------|
 | UART0 | 14 | 15 | /dev/ttyAMA0 | デフォルト（PL011） |
-| UART2 | 0 | 1 | /dev/ttyAMA1 | I2C0 と共有 |
-| UART3 | 4 | 5 | /dev/ttyAMA2 | |
-| UART4 | 8 | 9 | /dev/ttyAMA3 | SPI0 CE0/CE1 と共有 |
-| UART5 | 12 | 13 | /dev/ttyAMA4 | |
+| UART2 | 0 | 1 | /dev/ttyAMA2 | I2C0 と共有 |
+| UART3 | 4 | 5 | /dev/ttyAMA3 | |
+| UART4 | 8 | 9 | /dev/ttyAMA4 | SPI0 CE0/CE1 と共有 |
+| UART5 | 12 | 13 | /dev/ttyAMA5 | |
 
 UART1（mini UART）は 921600 baud を安定してサポートできないため除外しています。
 
@@ -93,7 +93,7 @@ sudo ./expresslrs_sender --gpio 12 ping
 ```json
 {
   "device": {
-    "gpio_tx": 4,
+    "gpio_tx": 12,
     "baudrate": 921600
   }
 }
@@ -268,7 +268,7 @@ sudo ./expresslrs_sender -c config/custom.json play -H data/flight.csv
     "invert_tx": true,
     "invert_rx": false,
     "half_duplex": true,
-    "gpio_tx": -1
+    "gpio_tx": 12
   },
   "playback": {
     "default_rate_hz": 500,
@@ -292,10 +292,10 @@ sudo ./expresslrs_sender -c config/custom.json play -H data/flight.csv
 ### CSV形式
 
 ```csv
-timestamp_ms,ch1,ch2,ch3,ch4,ch5,ch6,ch7,ch8
-0,992,992,172,992,172,172,172,172
-20,992,992,200,992,172,172,172,172
-40,992,992,300,992,172,172,172,172
+timestamp_ms,ch1,ch2,ch3,ch4,ch5,ch6,ch7,ch8,ch9,ch10,ch11,ch12,ch13,ch14,ch15,ch16
+0,992,992,172,992,172,172,172,172,992,992,992,992,992,992,992,992
+20,992,992,200,992,172,172,172,172,992,992,992,992,992,992,992,992
+40,992,992,300,992,172,172,172,172,992,992,992,992,992,992,992,992
 ```
 
 ### JSON形式
@@ -307,8 +307,8 @@ timestamp_ms,ch1,ch2,ch3,ch4,ch5,ch6,ch7,ch8
     "duration_ms": 60000
   },
   "frames": [
-    {"t": 0, "ch": [992, 992, 172, 992, 172, 172, 172, 172]},
-    {"t": 20, "ch": [992, 992, 200, 992, 172, 172, 172, 172]}
+    {"t": 0, "ch": [992, 992, 172, 992, 172, 172, 172, 172, 992, 992, 992, 992, 992, 992, 992, 992]},
+    {"t": 20, "ch": [992, 992, 200, 992, 172, 172, 172, 172, 992, 992, 992, 992, 992, 992, 992, 992]}
   ]
 }
 ```

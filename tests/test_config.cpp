@@ -157,7 +157,7 @@ TEST_F(ConfigTest, GpioTxResolvesDevicePort) {
 
     EXPECT_TRUE(result.ok());
     EXPECT_EQ(result.value.gpio_tx, 4);
-    EXPECT_EQ(result.value.device_port, "/dev/ttyAMA2");
+    EXPECT_EQ(result.value.device_port, "/dev/ttyAMA3");
 }
 
 // CFG-007: gpio_tx with unknown pin keeps default device_port
