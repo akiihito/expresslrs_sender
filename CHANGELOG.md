@@ -7,6 +7,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 ## [Unreleased]
 
 ### Changed
+- ソフトウェア信号反転 (`invert_tx`/`invert_rx`) を削除し、dtoverlay 方式に変更
+  - `UartOptions`、`AppConfig` から `invert_tx`/`invert_rx` フィールドを削除
+  - `invertByte()` 関数を削除
+  - 信号反転は Raspberry Pi の dtoverlay (`txdN_invert`) で設定する方式に統一
 - TX モジュール通信パラメータを ELRS V3.x 仕様に修正
   - デフォルトボーレートを 420000 → 921600 に変更（TX モジュール用）
   - 旧値は `CRSF_BAUDRATE_RX` として保持（レシーバー直接接続用）

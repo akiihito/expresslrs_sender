@@ -72,12 +72,6 @@ Result<AppConfig> loadConfig(const std::string& filepath) {
             if (device.contains("baudrate")) {
                 config.baudrate = device["baudrate"].get<int>();
             }
-            if (device.contains("invert_tx")) {
-                config.invert_tx = device["invert_tx"].get<bool>();
-            }
-            if (device.contains("invert_rx")) {
-                config.invert_rx = device["invert_rx"].get<bool>();
-            }
             if (device.contains("half_duplex")) {
                 config.half_duplex = device["half_duplex"].get<bool>();
             }

@@ -37,17 +37,20 @@ Raspberry Pi に接続した BETAFPV NANO TX モジュール V2 を通じて、�
 
 2. **デバイスアドレス**: TXモジュールに送信する場合は `0xEE` を使用します（FC宛ては `0xC8`）。
 
-3. **信号反転**: 一部のモジュールや接続方法では、UART TX信号の論理反転が必要な場合があります。
-   - 設定ファイルで `"invert_tx": true` を設定
-   - または、ハードウェアインバーターを使用
+3. **信号反転**: CRSF の S.Port 信号は論理が反転しているため、UART TX の信号レベル反転が必要です。
+   Raspberry Pi の dtoverlay を使ってハードウェアレベルで反転を行います。
+   ```
+   dtoverlay=uart5,txd5_invert
+   ```
+   使用する UART 番号に応じて `uartN` と `txdN_invert` を変更してください。
 
-4. **ボーレート**: 420000 bps は非標準のため、Raspberry Piのデバイスツリーオーバーレイで対応が必要な場合があります。
+4. **ボーレート**: TX モジュールとの通信は 921600 bps を使用します。
 
 ## 通信仕様
 
 ### CRSF (Crossfire) プロトコル
 
-- **ボーレート**: 420000 bps (CRSF 標準)
+- **ボーレート**: 921600 bps (TX モジュール用、レシーバー直接接続は 420000 bps)
 - **データビット**: 8
 - **パリティ**: なし
 - **ストップビット**: 1
@@ -258,7 +261,7 @@ expresslrs_sender [グローバルオプション] <コマンド> [コマンド�
 |-----------|------|------|-----------|
 | `--config <file>` | `-c` | 設定ファイルパス | `config/default.json` |
 | `--device <path>` | `-d` | UARTデバイスパス | `/dev/ttyAMA0` |
-| `--baudrate <bps>` | `-b` | ボーレート | `420000` |
+| `--baudrate <bps>` | `-b` | ボーレート | `921600` |
 | `--verbose` | `-v` | 詳細ログ出力 | off |
 | `--quiet` | `-q` | エラーのみ出力 | off |
 | `--help` | `-h` | ヘルプ表示 | - |
@@ -410,7 +413,7 @@ sudo expresslrs_sender send --channels 992,992,992,992 --arm --duration 5000
 {
   "device": {
     "port": "/dev/ttyAMA0",
-    "baudrate": 420000
+    "baudrate": 921600
   },
   "playback": {
     "default_rate_hz": 50,

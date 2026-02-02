@@ -164,8 +164,6 @@ int cmdPlay(config::AppConfig& config, int argc, char* argv[]) {
     if (!dry_run) {
         uart::UartOptions uart_opts;
         uart_opts.baudrate = config.baudrate;
-        uart_opts.invert_tx = config.invert_tx;
-        uart_opts.invert_rx = config.invert_rx;
         uart_opts.half_duplex = config.half_duplex;
 
         auto uart_result = uart.open(config.device_port, uart_opts);
@@ -173,8 +171,7 @@ int cmdPlay(config::AppConfig& config, int argc, char* argv[]) {
             spdlog::error("Failed to open UART: {}", uart_result.message);
             return static_cast<int>(uart_result.error);
         }
-        spdlog::info("Opened {} at {} baud{}{}", config.device_port, config.baudrate,
-            config.invert_tx ? " (TX inverted)" : "",
+        spdlog::info("Opened {} at {} baud{}", config.device_port, config.baudrate,
             config.half_duplex ? " (half-duplex)" : "");
     } else {
         spdlog::info("Dry-run mode - not sending to device");
@@ -356,8 +353,6 @@ int cmdPing(config::AppConfig& config, int argc, char* argv[]) {
     uart::UartDriver uart;
     uart::UartOptions uart_opts;
     uart_opts.baudrate = config.baudrate;
-    uart_opts.invert_tx = config.invert_tx;
-    uart_opts.invert_rx = config.invert_rx;
     uart_opts.half_duplex = config.half_duplex;
 
     auto uart_result = uart.open(config.device_port, uart_opts);
@@ -437,8 +432,6 @@ int cmdInfo(config::AppConfig& config, int argc, char* argv[]) {
     uart::UartDriver uart;
     uart::UartOptions uart_opts;
     uart_opts.baudrate = config.baudrate;
-    uart_opts.invert_tx = config.invert_tx;
-    uart_opts.invert_rx = config.invert_rx;
     uart_opts.half_duplex = config.half_duplex;
 
     auto uart_result = uart.open(config.device_port, uart_opts);
@@ -533,8 +526,6 @@ int cmdSend(config::AppConfig& config, int argc, char* argv[]) {
     uart::UartDriver uart;
     uart::UartOptions uart_opts;
     uart_opts.baudrate = config.baudrate;
-    uart_opts.invert_tx = config.invert_tx;
-    uart_opts.invert_rx = config.invert_rx;
     uart_opts.half_duplex = config.half_duplex;
 
     auto uart_result = uart.open(config.device_port, uart_opts);

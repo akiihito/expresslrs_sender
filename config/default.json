@@ -2,8 +2,6 @@
   "device": {
     "port": "/dev/ttyAMA0",
     "baudrate": 921600,
-    "invert_tx": true,
-    "invert_rx": false,
     "half_duplex": true,
     "gpio_tx": 12
   },

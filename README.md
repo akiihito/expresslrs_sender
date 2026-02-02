@@ -70,6 +70,28 @@ dtoverlay=uart5
 
 再起動後に有効になります。
 
+### 信号反転（dtoverlay 設定）
+
+CRSF の S.Port 信号は論理が反転しているため、UART TX の信号レベル反転が必要です。
+Raspberry Pi の dtoverlay を使ってハードウェアレベルで反転を行います。
+
+`/boot/config.txt`（Pi 5 では `/boot/firmware/config.txt`）に以下を追加してください:
+
+| 使用する UART | dtoverlay 設定 |
+|--------------|---------------|
+| UART0 | `dtoverlay=uart0,txd0_invert` |
+| UART2 | `dtoverlay=uart2,txd2_invert` |
+| UART3 | `dtoverlay=uart3,txd3_invert` |
+| UART4 | `dtoverlay=uart4,txd4_invert` |
+| UART5 | `dtoverlay=uart5,txd5_invert` |
+
+例（UART5 を使用する場合）:
+```
+dtoverlay=uart5,txd5_invert
+```
+
+設定後に再起動が必要です。テレメトリ受信も行う場合は `rxdN_invert` も追加してください（例: `dtoverlay=uart5,txd5_invert,rxd5_invert`）。
+
 ### GPIO ピン指定での接続
 
 ```bash
@@ -265,8 +287,6 @@ sudo ./expresslrs_sender -c config/custom.json play -H data/flight.csv
   "device": {
     "port": "/dev/ttyAMA0",
     "baudrate": 921600,
-    "invert_tx": true,
-    "invert_rx": false,
     "half_duplex": true,
     "gpio_tx": 12
   },
@@ -349,7 +369,7 @@ sudo usermod -a -G dialout $USER
 ### TXモジュールと通信できない
 
 1. 接続を確認（GPIO TX が S.Port ピンに正しく接続されているか）
-2. ELRS V3.x TX モジュールでは `"invert_tx": true` が必要
+2. dtoverlay で UART TX の信号反転が設定されているか確認（例: `dtoverlay=uart5,txd5_invert`）
 3. ボーレートが正しいか確認（TX モジュール: 921600 bps、レシーバー直接: 420000 bps）
 4. 半二重設定を確認（`"half_duplex": true`）
 

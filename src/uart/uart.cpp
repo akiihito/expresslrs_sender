@@ -216,31 +216,12 @@ Result<void> UartDriver::configure(int baudrate) {
     return Result<void>::success();
 }
 
-uint8_t UartDriver::invertByte(uint8_t byte) {
-    // ビット順序を反転（LSB <-> MSB）
-    byte = ((byte & 0xF0) >> 4) | ((byte & 0x0F) << 4);
-    byte = ((byte & 0xCC) >> 2) | ((byte & 0x33) << 2);
-    byte = ((byte & 0xAA) >> 1) | ((byte & 0x55) << 1);
-    return ~byte;  // さらに論理反転
-}
-
 Result<size_t> UartDriver::write(const uint8_t* data, size_t len) {
     if (m_fd < 0) {
         return Result<size_t>::failure(ErrorCode::DeviceError, "Port not open");
     }
 
-    ssize_t written;
-
-    if (m_options.invert_tx) {
-        // 信号反転が必要な場合、各バイトを反転
-        std::vector<uint8_t> inverted(len);
-        for (size_t i = 0; i < len; i++) {
-            inverted[i] = invertByte(data[i]);
-        }
-        written = ::write(m_fd, inverted.data(), len);
-    } else {
-        written = ::write(m_fd, data, len);
-    }
+    ssize_t written = ::write(m_fd, data, len);
 
     if (written < 0) {
         return Result<size_t>::failure(
@@ -301,13 +282,6 @@ Result<std::vector<uint8_t>> UartDriver::read(size_t max_len, int timeout_ms) {
     }
 
     buffer.resize(static_cast<size_t>(bytes_read));
-
-    // 信号反転が必要な場合
-    if (m_options.invert_rx) {
-        for (auto& byte : buffer) {
-            byte = invertByte(byte);
-        }
-    }
 
     return Result<std::vector<uint8_t>>::success(std::move(buffer));
 }

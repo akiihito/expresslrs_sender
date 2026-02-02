@@ -12,8 +12,6 @@ namespace uart {
 // UART options
 struct UartOptions {
     int baudrate = CRSF_BAUDRATE;
-    bool invert_tx = false;  // ソフトウェアでTX信号を反転（一部のモジュールで必要）
-    bool invert_rx = false;  // ソフトウェアでRX信号を反転
     bool half_duplex = false; // 半二重通信モード（送信後 tcdrain で完了を保証）
 };
 
@@ -67,9 +65,6 @@ private:
     UartOptions m_options;
 
     Result<void> configure(int baudrate);
-
-    // ビット反転（信号反転用）
-    static uint8_t invertByte(uint8_t byte);
 };
 
 }  // namespace uart
