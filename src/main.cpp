@@ -202,6 +202,7 @@ int cmdPlay(config::AppConfig& config, int argc, char* argv[]) {
                 spdlog::error("UART write failed: {}", write_result.message);
                 return false;
             }
+            uart.drainTelemetry();
         }
 
         safety_monitor.notifyFrameSent();
@@ -232,6 +233,7 @@ int cmdPlay(config::AppConfig& config, int argc, char* argv[]) {
 
         for (int i = 0; i < config.safety.disarm_frames; i++) {
             uart.write(disarm_frame);
+            uart.drainTelemetry();
             std::this_thread::sleep_for(std::chrono::milliseconds(20));
         }
     }
@@ -559,6 +561,7 @@ int cmdSend(config::AppConfig& config, int argc, char* argv[]) {
 
             auto frame = crsf::buildRcChannelsFrame(safe_channels);
             uart.write(frame);
+            uart.drainTelemetry();
             safety_monitor.notifyFrameSent();
 
             last_send = now;
@@ -572,6 +575,7 @@ int cmdSend(config::AppConfig& config, int argc, char* argv[]) {
     auto disarm_frame = crsf::buildRcChannelsFrame(disarm_channels);
     for (int i = 0; i < 10; i++) {
         uart.write(disarm_frame);
+        uart.drainTelemetry();
         std::this_thread::sleep_for(std::chrono::milliseconds(2));
     }
 

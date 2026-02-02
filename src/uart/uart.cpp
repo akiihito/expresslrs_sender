@@ -6,7 +6,10 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 
+#include <chrono>
 #include <cstring>
+
+#include <spdlog/spdlog.h>
 
 // Linux-specific for custom baud rates
 // Note: We use ioctl with TCGETS2/TCSETS2 directly to avoid header conflicts
@@ -284,6 +287,41 @@ Result<std::vector<uint8_t>> UartDriver::read(size_t max_len, int timeout_ms) {
     buffer.resize(static_cast<size_t>(bytes_read));
 
     return Result<std::vector<uint8_t>>::success(std::move(buffer));
+}
+
+void UartDriver::drainTelemetry(int timeout_ms) {
+    if (!m_options.half_duplex || m_fd < 0) {
+        return;
+    }
+
+    auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeout_ms);
+    size_t total_bytes = 0;
+    uint8_t buf[256];
+
+    while (std::chrono::steady_clock::now() < deadline) {
+        auto remaining = std::chrono::duration_cast<std::chrono::milliseconds>(
+            deadline - std::chrono::steady_clock::now());
+        int poll_ms = std::max(0, static_cast<int>(remaining.count()));
+
+        struct pollfd pfd{};
+        pfd.fd = m_fd;
+        pfd.events = POLLIN;
+
+        int ret = poll(&pfd, 1, poll_ms);
+        if (ret <= 0) {
+            break;  // タイムアウトまたはエラー
+        }
+
+        ssize_t n = ::read(m_fd, buf, sizeof(buf));
+        if (n <= 0) {
+            break;
+        }
+        total_bytes += static_cast<size_t>(n);
+    }
+
+    if (total_bytes > 0) {
+        spdlog::debug("Drained {} telemetry bytes", total_bytes);
+    }
 }
 
 void UartDriver::setTxEnabled(bool /* enabled */) {

@@ -50,6 +50,9 @@ public:
     // Read data (with timeout in ms, 0 = non-blocking)
     Result<std::vector<uint8_t>> read(size_t max_len, int timeout_ms = 100);
 
+    // 半二重モードで TX モジュールからのテレメトリを読み捨てる
+    void drainTelemetry(int timeout_ms = 1);
+
     // Enable/disable TX (for half-duplex direction control)
     void setTxEnabled(bool enabled);
 

@@ -18,6 +18,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
   - デフォルトパケットレートを 50Hz → 500Hz に変更
 
 ### Added
+- 半二重テレメトリドレイン (`UartDriver::drainTelemetry()`)
+  - RC フレーム送信後に TX モジュールからのテレメトリ応答を読み捨て
+  - 半二重 S.Port 上でのバス衝突を防止し、ch5-ch16 が正しく送信されるよう修正
+  - `cmdPlay` / `cmdSend` の送信ループおよび disarm ループに適用
 - 半二重通信サポート (`half_duplex` 設定)
   - `UartOptions` に `half_duplex` フィールド追加
   - 半二重モード時は `tcdrain()` で送信完了を保証
