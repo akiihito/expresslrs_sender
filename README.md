@@ -222,6 +222,28 @@ sudo usermod -a -G dialout $USER
 # 再ログインが必要
 ```
 
+### リアルタイムスケジューリングと CPU アフィニティ
+
+500Hz の送信タイミングを安定させるため、`expresslrs_sender` はデフォルトで `SCHED_FIFO`（リアルタイムスケジューリング）を有効にします。`--no-realtime` で無効化できます。
+
+同じ Raspberry Pi 上で他のリアルタイム性が必要なプロセス（ELRS レシーバー読み取りなど）を同時に動かす場合は、`taskset` で CPU コアを分離してください。コアを共有すると SCHED_FIFO プロセスが他方を飢餓状態にする可能性があります。
+
+```bash
+# sender を CPU2 に固定
+sudo taskset -c 2 ./expresslrs_sender play -H data/sample.csv
+
+# 別プロセスを CPU3 に固定
+sudo taskset -c 3 ./elrs_receiver
+```
+
+リアルタイムスケジューリングを無効にする場合:
+
+```bash
+sudo ./expresslrs_sender --no-realtime play -H data/sample.csv
+```
+
+root 権限がない場合は `SCHED_FIFO` の設定に失敗しますが、警告を出して通常スケジューリングで動作を継続します。
+
 ## 使い方
 
 ### ヘルプ
