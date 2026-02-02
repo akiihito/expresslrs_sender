@@ -28,6 +28,7 @@ struct PlaybackStats {
     uint32_t elapsed_ms;
     double actual_rate_hz;
     double timing_jitter_us;
+    double max_jitter_us;
 };
 
 // Callback type for frame sending
@@ -89,6 +90,7 @@ private:
     uint64_t m_frames_sent;
     double m_jitter_sum;
     uint64_t m_jitter_count;
+    double m_max_jitter;
 
     // Current frame data
     ChannelData m_current_channels;

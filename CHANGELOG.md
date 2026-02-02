@@ -6,6 +6,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added
+- RT スケジューリングユーティリティ (`src/scheduling/realtime.hpp/.cpp`)
+  - `SCHED_FIFO` + `mlockall` でリアルタイム優先度設定
+  - root 権限がない場合は警告を出して通常動作を継続
+  - `#ifdef __linux__` ガードで macOS ビルドも対応
+- `--no-realtime` CLI オプション（RT スケジューリングを無効化）
+- 設定ファイル `scheduling.realtime` セクション
+- `PlaybackStats::max_jitter_us` フィールド（最大ジッター追跡）
+- タイミングテスト (`tests/test_timing.cpp`)
+
+### Changed
+- 500Hz タイミング精度を改善
+  - PlaybackController の `tick()` にドリフト補正を導入（`m_last_send_time += interval`）
+  - 3 インターバル以上遅れた場合はスナップフォワードでバースト送信を防止
+  - `cmdSend` にも同様のドリフト補正を適用
+  - `send_interval` を `milliseconds(2)` から `microseconds(2000)` に変更（精度向上）
+- メインループのスリープ戦略を改善
+  - 固定 `sleep_for(100µs)` から次回送信時刻までの残り時間ベースに変更
+  - 残り > 200µs の場合は `sleep_for(remaining - 200µs)`、それ以外はスピンウェイト
+- 再生完了ログに `max_jitter` を追加表示
+
 ### Changed
 - ソフトウェア信号反転 (`invert_tx`/`invert_rx`) を削除し、dtoverlay 方式に変更
   - `UartOptions`、`AppConfig` から `invert_tx`/`invert_rx` フィールドを削除

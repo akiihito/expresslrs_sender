@@ -23,6 +23,9 @@ struct AppConfig {
     // Safety settings
     safety::SafetyConfig safety;
 
+    // Scheduling
+    bool no_realtime = false;
+
     // Logging
     std::string log_level = "info";
     std::string log_file;

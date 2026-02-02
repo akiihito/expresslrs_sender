@@ -15,7 +15,8 @@ PlaybackController::PlaybackController()
     , m_loops_done(0)
     , m_frames_sent(0)
     , m_jitter_sum(0)
-    , m_jitter_count(0) {
+    , m_jitter_count(0)
+    , m_max_jitter(0) {
     // Initialize channels to center
     m_current_channels.fill(CRSF_CHANNEL_MID);
 }
@@ -53,6 +54,7 @@ void PlaybackController::start() {
     m_frames_sent = 0;
     m_jitter_sum = 0;
     m_jitter_count = 0;
+    m_max_jitter = 0;
 
     // Find starting frame
     m_current_index = findFrameIndex(m_options.start_time_ms);
@@ -104,6 +106,8 @@ PlaybackStats PlaybackController::getStats() const {
     if (m_jitter_count > 0) {
         stats.timing_jitter_us = m_jitter_sum / static_cast<double>(m_jitter_count);
     }
+
+    stats.max_jitter_us = m_max_jitter;
 
     return stats;
 }
@@ -166,10 +170,19 @@ bool PlaybackController::tick() {
 
     // Calculate timing jitter
     int64_t jitter = since_last.count() - m_send_interval.count();
-    m_jitter_sum += std::abs(static_cast<double>(jitter));
+    double abs_jitter = std::abs(static_cast<double>(jitter));
+    m_jitter_sum += abs_jitter;
     m_jitter_count++;
+    if (abs_jitter > m_max_jitter) {
+        m_max_jitter = abs_jitter;
+    }
 
-    m_last_send_time = now;
+    // Drift correction: advance by exact interval instead of snapping to now
+    m_last_send_time += m_send_interval;
+    // Snap forward if more than 3 intervals behind (prevent burst sends)
+    if (now - m_last_send_time > m_send_interval * 3) {
+        m_last_send_time = now;
+    }
 
     // Update playback time
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - m_start_time);

@@ -14,6 +14,7 @@
 #include "history/history_loader.hpp"
 #include "playback/playback_controller.hpp"
 #include "safety/safety_monitor.hpp"
+#include "scheduling/realtime.hpp"
 #include "uart/uart.hpp"
 
 using namespace elrs;
@@ -30,6 +31,7 @@ void printHelp(const char* program) {
         << "  -d, --device <path>    UART device (default: /dev/ttyAMA0)\n"
         << "  -g, --gpio <pin>       GPIO TX pin number (auto-resolves UART device)\n"
         << "  -b, --baudrate <bps>   Baudrate (default: 921600)\n"
+        << "  --no-realtime          Disable RT scheduling (SCHED_FIFO)\n"
         << "  -v, --verbose          Verbose output\n"
         << "  -q, --quiet            Quiet mode (errors only)\n"
         << "  -h, --help             Show this help\n"
@@ -216,13 +218,33 @@ int cmdPlay(config::AppConfig& config, int argc, char* argv[]) {
 
     playback.start();
 
-    // Main loop
+    // Enable real-time scheduling for precise timing
+    if (!config.no_realtime) {
+        scheduling::enableRealtimeScheduling();
+    }
+
+    // Main loop with improved sleep strategy
+    auto next_send = std::chrono::steady_clock::now();
+    auto send_interval = std::chrono::microseconds(
+        static_cast<int64_t>(1000000.0 / config.playback.rate_hz));
+
     while (!playback.isComplete() && !safety::SafetyMonitor::isShutdownRequested()) {
-        playback.tick();
+        if (playback.tick()) {
+            next_send += send_interval;
+        }
         safety_monitor.checkFailsafe();
 
-        // Small sleep to prevent busy-waiting
-        std::this_thread::sleep_for(std::chrono::microseconds(100));
+        // Sleep until close to next send time, then spin-wait
+        auto now = std::chrono::steady_clock::now();
+        auto remaining = std::chrono::duration_cast<std::chrono::microseconds>(
+            next_send - now);
+        if (remaining.count() > 200) {
+            std::this_thread::sleep_for(remaining - std::chrono::microseconds(200));
+        }
+    }
+
+    if (!config.no_realtime) {
+        scheduling::disableRealtimeScheduling();
     }
 
     // Emergency stop handling - send disarm frames
@@ -240,9 +262,11 @@ int cmdPlay(config::AppConfig& config, int argc, char* argv[]) {
 
     // Print stats
     auto stats = playback.getStats();
-    spdlog::info("Playback complete: {} frames, {} loops, {:.1f}s, {:.1f}Hz actual, {:.1f}us jitter",
+    spdlog::info("Playback complete: {} frames, {} loops, {:.1f}s, {:.1f}Hz actual, "
+        "avg_jitter={:.1f}us max_jitter={:.1f}us",
         stats.frames_sent, stats.loops_completed,
-        stats.elapsed_ms / 1000.0, stats.actual_rate_hz, stats.timing_jitter_us);
+        stats.elapsed_ms / 1000.0, stats.actual_rate_hz,
+        stats.timing_jitter_us, stats.max_jitter_us);
 
     return safety::SafetyMonitor::isShutdownRequested() ? 130 : 0;
 }
@@ -542,8 +566,13 @@ int cmdSend(config::AppConfig& config, int argc, char* argv[]) {
 
     spdlog::info("Sending for {}ms{}...", duration_ms, arm ? " (ARMED)" : "");
 
+    // Enable real-time scheduling
+    if (!config.no_realtime) {
+        scheduling::enableRealtimeScheduling();
+    }
+
     auto start = std::chrono::steady_clock::now();
-    auto send_interval = std::chrono::milliseconds(2);  // 500Hz
+    auto send_interval = std::chrono::microseconds(2000);  // 500Hz
     auto last_send = start;
 
     while (!safety::SafetyMonitor::isShutdownRequested()) {
@@ -554,7 +583,7 @@ int cmdSend(config::AppConfig& config, int argc, char* argv[]) {
             break;
         }
 
-        auto since_last = std::chrono::duration_cast<std::chrono::milliseconds>(now - last_send);
+        auto since_last = std::chrono::duration_cast<std::chrono::microseconds>(now - last_send);
         if (since_last >= send_interval) {
             ChannelData safe_channels = channels;
             safety_monitor.processChannels(safe_channels);
@@ -564,10 +593,24 @@ int cmdSend(config::AppConfig& config, int argc, char* argv[]) {
             uart.drainTelemetry();
             safety_monitor.notifyFrameSent();
 
-            last_send = now;
+            // Drift correction: advance by exact interval
+            last_send += send_interval;
+            // Snap forward if more than 3 intervals behind
+            if (now - last_send > send_interval * 3) {
+                last_send = now;
+            }
         }
 
-        std::this_thread::sleep_for(std::chrono::microseconds(100));
+        // Sleep until close to next send time, then spin-wait
+        auto remaining = std::chrono::duration_cast<std::chrono::microseconds>(
+            last_send + send_interval - std::chrono::steady_clock::now());
+        if (remaining.count() > 200) {
+            std::this_thread::sleep_for(remaining - std::chrono::microseconds(200));
+        }
+    }
+
+    if (!config.no_realtime) {
+        scheduling::disableRealtimeScheduling();
     }
 
     // Send disarm
@@ -636,6 +679,8 @@ int main(int argc, char* argv[]) {
             if (i + 1 < argc) cli_gpio_tx = std::stoi(argv[++i]);
         } else if (strcmp(argv[i], "-b") == 0 || strcmp(argv[i], "--baudrate") == 0) {
             if (i + 1 < argc) cli_baudrate = std::stoi(argv[++i]);
+        } else if (strcmp(argv[i], "--no-realtime") == 0) {
+            config.no_realtime = true;
         } else if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--verbose") == 0) {
             log_level = "debug";
         } else if (strcmp(argv[i], "-q") == 0 || strcmp(argv[i], "--quiet") == 0) {

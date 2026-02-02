@@ -114,6 +114,15 @@ Result<AppConfig> loadConfig(const std::string& filepath) {
             }
         }
 
+        // Scheduling settings
+        if (j.contains("scheduling")) {
+            const auto& scheduling = j["scheduling"];
+            if (scheduling.contains("realtime")) {
+                // "realtime": true means RT enabled, so no_realtime is the inverse
+                config.no_realtime = !scheduling["realtime"].get<bool>();
+            }
+        }
+
         // Logging settings
         if (j.contains("logging")) {
             const auto& logging = j["logging"];
